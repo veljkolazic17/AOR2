@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import rs.ac.bg.etf.aor2.memory.MemoryOperation;
+import rs.ac.bg.etf.aor2.memory.MemoryOperation.MemoryOperationType;
 import rs.ac.bg.etf.aor2.memory.cache.ICacheMemory;
 import rs.ac.bg.etf.aor2.memory.cache.Tag;
 
@@ -16,21 +17,15 @@ public class NeuralReplacmentPolicy implements IReplacementPolicy{
     private ICacheMemory iCacheMemory;
 
 
-
-    private ArrayList<Integer> number_of_set_accesses;
-    private ArrayList<Integer> set_accesses_since_miss;
-    private ArrayList<Integer> set_accesses_since_cache_line_insertion;
-    private ArrayList<Integer> set_accesses_since_cache_line_access;
-    private ArrayList<Integer> cache_line_hits_since_insertion;
-
-    private ArrayList<Integer> preuse_access_information;
-    private ArrayList<ArrayList<Integer>> preuse_cache_line_information;
-
-    
+    // State parameters ( not all from paper are included )
+    private int[] number_of_set_accesses;
+    private int[] set_accesses_since_miss;
+    private int[] set_accesses_since_cache_line_insertion;
+    private int[] cache_line_hits_since_insertion;
+    private int[] line_preuse;
 
     private int set_num;
     private int set_asoc;
-
 
     public NeuralReplacmentPolicy(String ip){
         this.ip = ip;
@@ -43,18 +38,20 @@ public class NeuralReplacmentPolicy implements IReplacementPolicy{
         this.set_num = (int)this.iCacheMemory.getSetNum();
         this.set_asoc = (int)this.iCacheMemory.getSetAsociativity();
 
-        preuse_access_information = new ArrayList<Integer>(set_num);
-        preuse_cache_line_information = new ArrayList<ArrayList<Integer>>(set_num);
+        number_of_set_accesses = new int[set_num];
+        set_accesses_since_miss = new int[set_num];
+        set_accesses_since_cache_line_insertion = new int[set_num*set_asoc];
+        cache_line_hits_since_insertion = new int[set_num*set_asoc];
 
-        for(int i = 0;i < set_num;i++){
-            preuse.add(new ArrayList<Integer>(set_asoc));
-        }
+        line_preuse = new int[set_num*set_asoc];
         
     }
 
     @Override
     public int getBlockIndexToReplace(long adr) {
-        // TODO Auto-generated method stub
+        
+        
+
         return 0;
     }
 
@@ -70,20 +67,24 @@ public class NeuralReplacmentPolicy implements IReplacementPolicy{
             int entry = 0;
             for (int i = 0; i < this.set_asoc; i++) {
                 int block = set * this.set_asoc + i;
+
+                line_preuse[block]++;
+
                 Tag tag = tagMemory.get(block);
                 if (tag.V && (tag.tag == tagTag)) {
                     entry = i;
                     break;
                 }
             }
-            
-
-
-
+            // Set parameters to right values
+            number_of_set_accesses[set]++;
+            set_accesses_since_miss[set]++;
+            set_accesses_since_cache_line_insertion[entry]++;
+            line_preuse[entry] = 0;
         }
-        
-
-
+        else if (operation.getType() == MemoryOperation.MemoryOperationType.FLUSHALL) {
+            // Do flush
+        }
     }
 
     @Override
@@ -104,9 +105,7 @@ public class NeuralReplacmentPolicy implements IReplacementPolicy{
         
     }
 
-    public int reuse_distance(){
-        return 0;
-    }
+    public void inc_preuse_line()
 
 
 
