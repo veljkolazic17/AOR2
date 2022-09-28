@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.zip.GZIPInputStream;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 //https://www.cis.upenn.edu/~milom/cis501-Fall12/traces/trace-format.html
 public class CISPENN2011_Parser implements Parser {
 
@@ -60,20 +63,19 @@ public class CISPENN2011_Parser implements Parser {
 			String line = r.readLine();
 			if (line == null)
 				return null;
-			String[] tokens = line.split("\\s+");
+			String[] tokens = line.split("\t");
 
-			long pc = Long.parseLong(tokens[1], 16);
-			String conditionRegister = tokens[5];
-			String TNnotBranch = tokens[6];
-			boolean cond = !TNnotBranch.equals("-") && conditionRegister.equals("R");
-			boolean outcome = TNnotBranch.contains("T");
-			boolean isBranch = TNnotBranch.contains("T") || TNnotBranch.contains("N");
+			long pc = Long.parseLong(tokens[0].substring(2), 16);
+			boolean outcome = Integer.parseInt(tokens[1])==1;
+			boolean cond = Integer.parseInt(tokens[2])==1;
 
-			long targetAddressTakenBranch = Long.parseLong(tokens[11], 16);
+			String jmp_adr = tokens[7].replace(" ", "").substring(2, 14);
+
+			long targetAddressTakenBranch = Long.parseLong(jmp_adr, 16);
 			boolean isBackward = pc > targetAddressTakenBranch;
 
-			return new CISPENN2011_Instruction(pc, outcome, isBranch, cond, isBackward);
-
+			return new CISPENN2011_Instruction(pc, outcome, true, cond, isBackward);
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -83,32 +85,31 @@ public class CISPENN2011_Parser implements Parser {
 
 	public void fillStats() {
 		long pc;
-		String conditionRegister;
-		String TNnotBranch;
+
 		boolean cond;
 		boolean outcome;
 		long targetAddressTakenBranch;
 		boolean isBackward;
-		long microOpCount;
 		
 		try {
 			String line = " ";
 			while ((line = r.readLine()) != null) {
 
-				String[] tokens = line.split("\\s+");
-				
-				microOpCount = Long.parseLong(tokens[0]);
-				pc = Long.parseLong(tokens[1], 16);
-				conditionRegister = tokens[5];
-				TNnotBranch = tokens[6];
-				cond = !TNnotBranch.equals("-") && conditionRegister.equals("R");
-				outcome = TNnotBranch.contains("T");
+				if(line == ""){
+					continue;
+				}
 
-				targetAddressTakenBranch = Long.parseLong(tokens[11], 16);
+				String[] tokens = line.split("\t");
+
+				pc = Long.parseLong(tokens[0].substring(2), 16);
+				outcome = Integer.parseInt(tokens[1])==1;
+				cond = Integer.parseInt(tokens[2])==1;
+
+				String jmp_adr = tokens[7].replace(" ", "").substring(2, 14);
+
+				targetAddressTakenBranch = Long.parseLong(jmp_adr, 16);
 				isBackward = pc > targetAddressTakenBranch;
-				
-				if(microOpCount == 1)
-					numOfInstruction++;
+
 				if(targetAddressTakenBranch != 0)
 					numOfBr++;
 				if(cond)

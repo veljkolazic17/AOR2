@@ -105,7 +105,9 @@ public class NeuralReplacmentPolicy implements IReplacementPolicy{
         
     }
 
-    public void inc_preuse_line()
+    public void inc_preuse_line(){
+        
+    }
 
 
 

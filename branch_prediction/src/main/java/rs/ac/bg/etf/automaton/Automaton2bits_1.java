@@ -38,4 +38,8 @@ public class Automaton2bits_1 implements Automaton {
 	public boolean predict() {
 		return state != 0;
 	}
+	@Override
+	public void setState(int state) {
+		this.state = state;
+	}
 }

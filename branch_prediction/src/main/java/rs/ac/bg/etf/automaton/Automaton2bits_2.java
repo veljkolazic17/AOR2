@@ -30,4 +30,9 @@ public class Automaton2bits_2 implements Automaton {
         return state >= 2;
     }
 
+    @Override
+    public void setState(int state) {
+        this.state = state;
+    }
+
 }

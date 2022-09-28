@@ -26,9 +26,6 @@ public class PseudoLRUReplacementPolicy implements IReplacementPolicy {
         for (int i = 0; i < size; i++) {
             LRUCnts[i] = 0;
         }
-        if (setAsoc != 4)
-            throw new RuntimeException(
-                    "Implemented PseudoLRU support only size 4");
     }
 
     public int getBlockIndexToReplace(long adr) {

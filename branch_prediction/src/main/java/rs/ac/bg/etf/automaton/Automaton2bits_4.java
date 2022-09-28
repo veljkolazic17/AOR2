@@ -54,4 +54,9 @@ public class Automaton2bits_4 implements Automaton {
         return true;
     }
 
+    @Override
+    public void setState(int state) {
+        this.state = state;
+    }
+
 }

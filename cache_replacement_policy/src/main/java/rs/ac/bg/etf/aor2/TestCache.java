@@ -8,8 +8,14 @@ import rs.ac.bg.etf.aor2.memory.MemoryOperation;
 import rs.ac.bg.etf.aor2.memory.PrimaryMemory;
 import rs.ac.bg.etf.aor2.memory.cache.CacheMemoryWriteBackWriteAllocated;
 import rs.ac.bg.etf.aor2.memory.cache.ICacheMemory;
+import rs.ac.bg.etf.aor2.replacementpolicy.FIFOReplacementPolicy;
 import rs.ac.bg.etf.aor2.replacementpolicy.IReplacementPolicy;
 import rs.ac.bg.etf.aor2.replacementpolicy.LRUReplacementPolicy;
+import rs.ac.bg.etf.aor2.replacementpolicy.PseudoLRUReplacementPolicy;
+
+import javax.script.ScriptException;
+import java.io.*;
+
 
 import javax.script.ScriptException;
 import java.io.*;
@@ -18,24 +24,12 @@ public class TestCache {
 
     public static void main(String[] args) {
         int adrSize = 32;
-        String fNameStatistic = "statistic.txt";
-        try(FileWriter fileWriter = new FileWriter(fNameStatistic)) {
-            fileWriter.append(String.format("%s\t%s\t%s\t%s\t%s\t%s\n----------------------------------------------------------------------------------\n",
-                    "Block size",
-                    "Block number",
-                    "Set asociativity",
-                    "Cache Hit",
-                    "Cache Miss",
-                    "Hit ratio"
-            ));
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        int[] setAsocs = {1,2,4,8,16,32,64,128,256,512,1024,2048,4096,9192};
-        int[] blockNums = {1,2,4,8,16,32,64,128,256,512,1024,2048,4096,9192};
-        int[] blockSizes = {1,2,4,8,16,32,64};
+        String fNameStatisticL1D = "l1d.txt";
+        String fNameStatisticL1I = "l1i.txt";
+        
+        int[] setAsocs = {4,8,16,32};
+        int[] blockNums = {16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072};
+        int[] blockSizes = {16,32,64,128};
 
         for (int sa = 0; sa < setAsocs.length; sa++) {
             int setAsoc = setAsocs[sa];
@@ -44,7 +38,7 @@ public class TestCache {
                 for (int bs = 0; bs < blockSizes.length; bs++) {
                     int blockSize = blockSizes[bs];
 
-                    createCacheAndTest(adrSize,setAsoc,blockNum,blockSize,fNameStatistic);
+                    createCacheAndTest(adrSize,setAsoc,blockNum,blockSize,fNameStatisticL1I,fNameStatisticL1D);
 
                 }
 
@@ -52,26 +46,28 @@ public class TestCache {
         }
     }
 
-    private static void createCacheAndTest(int adrSize, int setAsoc, int blockNum, int blockSize, String fNameStatistic) {
+    private static void createCacheAndTest(int adrSize, int setAsoc, int blockNum, int blockSize, String fNameStatisticL1I, String fNameStatisticL1D) {
 
         PrimaryMemory primaryMemory = new PrimaryMemory(adrSize);
         IReplacementPolicy policy = new LRUReplacementPolicy();
-        ICacheMemory cache = new CacheMemoryWriteBackWriteAllocated(adrSize, setAsoc, blockNum, blockSize, primaryMemory, policy);
+        ICacheMemory cacheL2 = new CacheMemoryWriteBackWriteAllocated(adrSize, setAsoc, blockNum, blockSize, primaryMemory, policy);
+        ICacheMemory cacheL1I = new CacheMemoryWriteBackWriteAllocated(adrSize, setAsoc, blockNum, blockSize, cacheL2, policy);
+        ICacheMemory cacheL1D = new CacheMemoryWriteBackWriteAllocated(adrSize, setAsoc, blockNum, blockSize, cacheL2, policy);
+        //myNativeTest(cacheL1I,cacheL1D);
+        myValgrindTest(cacheL1I,cacheL1D);
 
-        myNativeTest(cache);
-        //myValgrindTest(cache);
+        long hits_cnt = cacheL1I.getCacheHitNum();
+        long miss_cnt = cacheL1I.getCacheMissNum();
 
-        long hits_cnt = cache.getCacheHitNum();
-        long miss_cnt = cache.getCacheMissNum();
+        // System.out.println("\nSTATISTICS");
+        // System.out.println("----------------------------------------");
+        // System.out.println("Hit count:\t " + hits_cnt);
+        // System.out.println("Miss count:\t " + miss_cnt);
+        // System.out.println("Hit rate:\t " + String.format("%.2f", ((double) hits_cnt * 100 / (hits_cnt + miss_cnt))) + "%");
+        //printTime(cacheL1D);
 
-        System.out.println("\nSTATISTICS");
-        System.out.println("----------------------------------------");
-        System.out.println("Hit count:\t " + hits_cnt);
-        System.out.println("Miss count:\t " + miss_cnt);
-        System.out.println("Hit rate:\t " + String.format("%.2f", ((double) hits_cnt * 100 / (hits_cnt + miss_cnt))) + "%");
-        printTime(cache);
-
-        printStatisticsToFile(cache,fNameStatistic);
+        printStatisticsToFile(cacheL1D,fNameStatisticL1D);
+        printStatisticsToFile(cacheL1I,fNameStatisticL1I);
 
         // System.out.println(cache.printValid());
         // System.out.println(cache.getReplacementPolicy().printValid());
@@ -210,7 +206,7 @@ public class TestCache {
         }
     }
 
-    public static void myNativeTest(ICacheMemory cache) {
+    public static void myNativeTest(ICacheMemory cacheI,ICacheMemory cacheD) {
 
         // kreiranje niza strukture {akcija, adresa}
 
@@ -232,14 +228,14 @@ public class TestCache {
         );
 
 
-        testTrace(cache, loader);
+        testTrace(cacheI,cacheD, loader);
     }
 
-    private static void myValgrindTest(ICacheMemory cache) {
+    private static void myValgrindTest(ICacheMemory cacheI,ICacheMemory cacheD) {
 
-        try (ValgrindTraceLoader loader = new ValgrindTraceLoader("trace.txt")) {
+        try (ValgrindTraceLoader loader = new ValgrindTraceLoader("/home/veljk/AOR2/cache_replacement_policy/trace20.txt")) {
 
-            testTrace(cache, loader);
+            testTrace(cacheI,cacheD, loader);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -248,22 +244,26 @@ public class TestCache {
     }
 
 
-    public static void testTrace(ICacheMemory cache, ITraceLoader loader) {
+    public static void testTrace(ICacheMemory cacheI,ICacheMemory cacheD, ITraceLoader loader) {
         long data = 0;
         while (loader.hasOperationToLoad()) {
             MemoryOperation operation = loader.getNextOperation();
-
-            switch (operation.getType()) {
-                case READ:
-                    data = cache.read(operation.getAddress());
-                    break;
-                case WRITE:
-                    cache.write(operation.getAddress(), data);
-                    break;
-                default:
+            if(loader.isInstructionOperation()){
+                cacheI.read(operation.getAddress());
+            }
+            else {
+                switch (operation.getType()) {
+                    case READ:
+                        data = cacheD.read(operation.getAddress());
+                        break;
+                    case WRITE:
+                        cacheD.write(operation.getAddress(), data);
+                        break;
+                    default:
+                }
             }
             // System.out.println(cache.printValid());
-            System.out.println(cache.printLastAccess());
+            //System.out.println(cacheD.printLastAccess());
         }
     }
 }

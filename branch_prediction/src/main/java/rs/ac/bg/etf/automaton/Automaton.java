@@ -27,6 +27,8 @@ public interface Automaton {
 
     void updateAutomaton(boolean outcome);
 
+    void setState(int state);
+
     boolean predict();
 
 }

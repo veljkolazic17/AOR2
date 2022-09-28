@@ -26,4 +26,9 @@ public class Automaton1bit implements Automaton {
         return state != 0;
     }
 
+    @Override
+    public void setState(int state) {
+        this.state = state;
+    }
+
 }

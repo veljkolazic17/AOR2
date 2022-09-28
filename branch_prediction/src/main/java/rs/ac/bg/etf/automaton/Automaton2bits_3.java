@@ -60,4 +60,9 @@ public class Automaton2bits_3 implements Automaton {
         }
     }
 
+    @Override
+    public void setState(int state) {
+        this.state = state;
+    }
+
 }
